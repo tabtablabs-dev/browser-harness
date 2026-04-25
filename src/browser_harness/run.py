@@ -1,5 +1,8 @@
 import os, sys
 
+from . import helpers as _helpers
+from . import kameleo
+
 # Windows default stdout encoding is cp1252, which can't encode the 🟢 marker
 # helpers prepend to tab titles (or anything else outside Latin-1). Force UTF-8
 # so `print(page_info())` doesn't UnicodeEncodeError on Windows. Issue #124(4).
@@ -9,6 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from .admin import (
     _version,
+    daemon_alive,
     ensure_daemon,
     list_cloud_profiles,
     list_local_profiles,
@@ -41,6 +45,7 @@ Commands:
   browser-harness --setup          interactively attach to your running browser
   browser-harness --update [-y]    pull the latest version (agents: pass -y)
   browser-harness --reload         stop the daemon so next call picks up code changes
+  browser-harness --kameleo-profile NAME [--bu-name NAME] [-c CODE]
 """
 
 
@@ -66,12 +71,38 @@ def main():
     if args and args[0] == "--debug-clicks":
         os.environ["BH_DEBUG_CLICKS"] = "1"
         args = args[1:]
+    kameleo_profile = None
+    kameleo_api = None
+    bu_name = None
+    while args:
+        if args[0] == "--kameleo-profile" and len(args) >= 2:
+            kameleo_profile = args[1]
+            args = args[2:]
+            continue
+        if args[0] == "--kameleo-api" and len(args) >= 2:
+            kameleo_api = args[1]
+            args = args[2:]
+            continue
+        if args[0] == "--bu-name" and len(args) >= 2:
+            bu_name = args[1]
+            args = args[2:]
+            continue
+        break
     if not args or args[0] != "-c":
         sys.exit("Usage: browser-harness -c \"print(page_info())\"")
     if len(args) < 2:
         sys.exit("Usage: browser-harness -c \"print(page_info())\"")
     print_update_banner()
-    ensure_daemon()
+    if kameleo_profile:
+        env = kameleo.attach_env(kameleo_profile, api=kameleo_api, name=bu_name)
+        os.environ.update(env)
+        _helpers.NAME = env["BU_NAME"]
+        _helpers.SOCK = _helpers.ipc.sock_addr(env["BU_NAME"])
+        if daemon_alive(env["BU_NAME"]):
+            restart_daemon(env["BU_NAME"])
+        ensure_daemon(name=env["BU_NAME"], env=env)
+    else:
+        ensure_daemon()
     exec(args[1], globals())
 
 

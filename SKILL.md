@@ -60,6 +60,18 @@ start_remote_daemon prints liveUrl and auto-opens it in the local browser (if a 
 
 Profiles (cookies-only login state) live in interaction-skills/profile-sync.md — covers list_cloud_profiles(), the chat-driven "which profile?" pattern, and sync_local_profile() for uploading a local Chrome profile.
 
+### Kameleo local profiles
+
+Use this for local Kameleo profiles. Kameleo owns the profile lifecycle; browser-harness attaches through the same BU_CDP_WS daemon path used for remote browsers.
+
+```bash
+browser-harness --kameleo-profile hh-networking-events-worker-1 -c 'print(page_info())'
+```
+
+Optional flags:
+- `--kameleo-api http://127.0.0.1:5050` — override the Local API endpoint
+- `--bu-name worker-1` — use a stable daemon/socket namespace; otherwise a unique name is generated
+
 ## Search first
 
 Search `agent-workspace/domain-skills/` first for the domain you are working on before inventing a new approach.
